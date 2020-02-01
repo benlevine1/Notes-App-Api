@@ -1,18 +1,17 @@
 import uuid from 'uuid';
-import AWS from 'aws-sdk';
+import * as dynamoDbLib from './libs/dynamodb-lib';
+import { success, failure } from './libs/response-lib';
 
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
-
-export function main(event, context, callback) {
+export async function main(event, context) {
   const data = JSON.parse(event.body);
 
   const params = {
     TableName: process.env.tableName,
-    /* 'Item' contains the attributes of the item to becreated
+    /* 'Item' contains the attributes of the item to be created
 'userId': user identities are federated through the Cognito Identity Pool, we will use
-the identity id as the user id of the authenticated user 
-'noteId': a unique uuid 
-'content': parsed from request body 
+the identity id as the user id of the authenticated user
+'noteId': a unique uuid
+'content': parsed from request body
 'attachment': parsed from request body
 'createdAt': current Unix timestamp
  */
@@ -25,25 +24,10 @@ the identity id as the user id of the authenticated user
     }
   };
 
-  dynamoDb.put(params, (error, data) => {
-    const headers = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true
-    };
-    if (error) {
-      const response = {
-        statusCode: 500,
-        headers: headers,
-        body: JSON.stringify({ status: false })
-      };
-      callback(null, response);
-      return;
-    }
-    const response = {
-      statusCode: 200,
-      headers: headers,
-      body: JSON.stringify(params.Item)
-    };
-    callback(null, response);
-  });
+  try {
+    await dynamoDbLib.call('put', params);
+    return success(params.Item);
+  } catch (e) {
+    return failure({ status: false });
+  }
 }
